@@ -1,0 +1,44 @@
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fav-bg" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4338CA" />
+      <stop offset="50%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#6D28D9" />
+    </linearGradient>
+    <linearGradient id="fav-page-l" x1="10" y1="18" x2="23" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+    <linearGradient id="fav-page-r" x1="25" y1="18" x2="38" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E0E7FF" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+    <linearGradient id="fav-star" x1="32" y1="8" x2="42" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="fav-cyan" x1="26" y1="14" x2="38" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#fav-bg)" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="1.5" />
+  
+  <!-- Left Page (Grammar & Reading) -->
+  <path d="M 23 34 C 17.5 32 12 33 9 34.5 C 8.5 27 12 19.5 23 18 L 23 34 Z" fill="url(#fav-page-l)" />
+  
+  <!-- Right Page (Speaking & Dialogue) -->
+  <path d="M 25 34 C 30.5 32 36 33 39 34.5 C 39.5 27 36 19.5 25 18 L 25 34 Z" fill="url(#fav-page-r)" />
+
+  <!-- Center Spine -->
+  <path d="M 24 16.5 L 24 35" stroke="#312E81" stroke-width="1.6" stroke-linecap="round" />
+
+  <!-- Acoustic Voice Wave -->
+  <path d="M 30 16.5 C 32.5 17.5 34 20 34 22.8" stroke="url(#fav-cyan)" stroke-width="2" stroke-linecap="round" />
+  <path d="M 33.5 14 C 37 16 38.5 19.5 38.5 23.5" stroke="url(#fav-cyan)" stroke-width="1.6" stroke-linecap="round" opacity="0.85" />
+
+  <!-- Fluency Star -->
+  <path d="M 36.5 8 L 37.5 10.5 L 40 11.5 L 37.5 12.5 L 36.5 15 L 35.5 12.5 L 33 11.5 L 35.5 10.5 Z" fill="url(#fav-star)" />
+  <circle cx="36.5" cy="11.5" r="1" fill="#FEF08A" />
+</svg>

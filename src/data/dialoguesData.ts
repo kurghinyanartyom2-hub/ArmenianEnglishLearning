@@ -1,0 +1,88 @@
+import { DialogueScenario } from '../types';
+
+export const DIALOGUES_DATA: DialogueScenario[] = [
+  {
+    id: 'dlg-tech-interview',
+    titleHy: 'ՏՏ Հարցազրույց միջազգային թիմում',
+    titleEn: 'Tech Job Interview with Global Team',
+    contextHy: 'Հայ ծրագրավորող Արամը հարցազրույց է անցնում միջազգային հեռավար ընկերությունում:',
+    contextEn: 'Aram from Yerevan interviews with an international remote tech company.',
+    level: 'Intermediate (B1-B2)',
+    lines: [
+      {
+        speaker: 'Sarah (Interviewer)',
+        speakerRoleHy: 'Հարցազրուցավար',
+        speakerRoleEn: 'Hiring Manager',
+        english: 'Hi Aram! Thanks for joining today. Could you tell us a bit about your engineering background?',
+        armenian: 'Ողջույն, Արամ: Շնորհակալություն միանալու համար: Կպատմե՞ք մի փոքր ձեր ինժեներական փորձի մասին:',
+        avatar: '👩‍💼',
+      },
+      {
+        speaker: 'Aram (Candidate)',
+        speakerRoleHy: 'Թեկնածու',
+        speakerRoleEn: 'Candidate',
+        english: 'Glad to meet you, Sarah! I have been working as a frontend developer for three years in Yerevan, specializing in React and TypeScript.',
+        armenian: 'Ուրախ եմ ծանոթանալու, Սառա: Ես արդեն երեք տարի է աշխատում եմ որպես ֆրոնտենդ ծրագրավորող Երևանում՝ մասնագիտանալով React-ում և TypeScript-ում:',
+        avatar: '👨‍💻',
+      },
+      {
+        speaker: 'Sarah (Interviewer)',
+        speakerRoleHy: 'Հարցազրուցավար',
+        speakerRoleEn: 'Hiring Manager',
+        english: 'Impressive. How do you usually handle tight deadlines and team communication?',
+        armenian: 'Տպավորիչ է: Ինչպե՞ս եք սովորաբար կառավարում սեղմ վերջնաժամկետները և թիմային հաղորդակցությունը:',
+        avatar: '👩‍💼',
+      },
+      {
+        speaker: 'Aram (Candidate)',
+        speakerRoleHy: 'Թեկնածու',
+        speakerRoleEn: 'Candidate',
+        english: 'I prioritize tasks with clear communication, break complex problems into small sprints, and keep teammates updated on Slack.',
+        armenian: 'Ես առաջնահերթություն եմ տալիս խնդիրներին հստակ հաղորդակցությամբ, բաժանում եմ բարդ խնդիրները փոքր սպրինտների և թիմին տեղյակ եմ պահում Slack-ում:',
+        avatar: '👨‍💻',
+      },
+    ],
+  },
+  {
+    id: 'dlg-coffee-shop',
+    titleHy: 'Պատվեր մասնագիտացված սրճարանում',
+    titleEn: 'Ordering at a Specialty Coffee Shop',
+    contextHy: 'Ինչպես բնական և քաղաքավարի պատվիրել սուրճ և նախաճաշ:',
+    contextEn: 'How to naturally order breakfast and artisanal coffee.',
+    level: 'Beginner (A1-A2)',
+    lines: [
+      {
+        speaker: 'Barista',
+        speakerRoleHy: 'Բարիստա',
+        speakerRoleEn: 'Barista',
+        english: 'Good morning! What can I get started for you today?',
+        armenian: 'Բարի լույս: Ի՞նչ պատրաստեմ ձեզ համար այսօր:',
+        avatar: '☕',
+      },
+      {
+        speaker: 'Sona (Customer)',
+        speakerRoleHy: 'Հաճախորդ',
+        speakerRoleEn: 'Customer',
+        english: 'Good morning! Could I please get an oat milk flat white and a warm croissant?',
+        armenian: 'Բարի լույս: Կարո՞ղ եմ խնդրել վարսակի կաթով flat white և տաք կրուասան, խնդրեմ:',
+        avatar: '👩',
+      },
+      {
+        speaker: 'Barista',
+        speakerRoleHy: 'Բարիստա',
+        speakerRoleEn: 'Barista',
+        english: 'Sure thing! For here or to go?',
+        armenian: 'Իհարկե: Այստե՞ղ, թե՞ տանելու:',
+        avatar: '☕',
+      },
+      {
+        speaker: 'Sona (Customer)',
+        speakerRoleHy: 'Հաճախորդ',
+        speakerRoleEn: 'Customer',
+        english: 'For here, please. And could I also have a glass of tap water?',
+        armenian: 'Այստեղ, խնդրեմ: Եվ կարո՞ղ եմ նաև մեկ բաժակ ջուր ունենալ:',
+        avatar: '👩',
+      },
+    ],
+  },
+];

@@ -1,0 +1,6 @@
+{
+  "name": "HayEnglish - Armenian English Learning",
+  "description": "Modern Armenian-English learning platform with student progress dashboard, XP and level tracking, daily streaks, CEFR lesson mastery, and native Armenian explanations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
