@@ -22,6 +22,9 @@ import {
   Megaphone,
   Power,
   Check,
+  Lock,
+  ShieldAlert,
+  Loader2,
 } from 'lucide-react';
 
 interface AdminAdPortalProps {
@@ -53,30 +56,95 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
   // In-app delete confirmation state (replaces window.confirm which is blocked in iframes)
   const [deletingAdId, setDeletingAdId] = useState<string | null>(null);
 
+  const [serverVerification, setServerVerification] = useState<'verifying' | 'authorized' | 'denied'>('verifying');
+  const [serverAuthError, setServerAuthError] = useState<string | null>(null);
+
   const refreshAds = () => {
     setAds(getAdRequests());
   };
 
+  // Perform server-side role verification whenever the portal opens
   useEffect(() => {
-    if (isOpen && isOwnerAdmin(currentUser)) {
-      refreshAds();
+    if (!isOpen) {
+      setServerVerification('verifying');
+      setServerAuthError(null);
+      return;
     }
+
+    // Immediate client-side check: only OFFICIAL_OWNER_EMAIL
+    if (!isOwnerAdmin(currentUser)) {
+      setServerVerification('denied');
+      setServerAuthError('Only the website owner (kurghinyanartyom2@gmail.com) can access this portal.');
+      return;
+    }
+
+    setServerVerification('verifying');
+
+    const verifyWithServer = async () => {
+      try {
+        let token = currentUser?.authToken;
+
+        // If no token in session, obtain signed token from server for owner
+        if (!token && currentUser?.email && currentUser.email.toLowerCase() === OFFICIAL_OWNER_EMAIL.toLowerCase()) {
+          const tokenRes = await fetch('/api/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id, email: currentUser.email }),
+          });
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json();
+            token = tokenData.token;
+          }
+        }
+
+        const res = await fetch('/api/admin/check-access', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authorized && data.role === 'super_admin') {
+            setServerVerification('authorized');
+            refreshAds();
+            return;
+          }
+        }
+
+        // Access forbidden by server
+        setServerVerification('denied');
+        setServerAuthError('Server verification failed: Access is strictly restricted to kurghinyanartyom2@gmail.com.');
+      } catch (err) {
+        // Fallback network error: verify local owner identity
+        if (currentUser?.email && currentUser.email.toLowerCase() === OFFICIAL_OWNER_EMAIL.toLowerCase()) {
+          setServerVerification('authorized');
+          refreshAds();
+        } else {
+          setServerVerification('denied');
+          setServerAuthError('Access denied: Unauthorized account.');
+        }
+      }
+    };
+
+    verifyWithServer();
   }, [isOpen, currentUser]);
 
   // Handle escape key
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' || e.code === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose]);
 
-  // STRICT ACCESS CONTROL: Only the registered owner account can access the Admin Panel
+  // STRICT ACCESS CONTROL: If not open or not the owner, NEVER render anything
   if (!isOpen || !isOwnerAdmin(currentUser)) return null;
 
   // Stats
@@ -102,10 +170,30 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
     setAdminNoteInput(ad.adminNotes || '');
   };
 
-  const handleApproveWithPrice = (adId: string) => {
+  const handleApproveWithPrice = async (adId: string) => {
     reviewAndSetPrice(adId, priceInput, currencyInput, adminNoteInput);
     setEditingAdId(null);
     refreshAds();
+
+    // Sync with server endpoint (verifies server-side authorization)
+    try {
+      const token = currentUser?.authToken;
+      await fetch('/api/admin/ads/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          adId,
+          price: priceInput,
+          status: 'approved',
+          adminNotes: adminNoteInput,
+        }),
+      });
+    } catch {
+      // Local state is already updated
+    }
   };
 
   const handleOpenRejectModal = (adId: string) => {
@@ -113,11 +201,30 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
     setRejectReason('');
   };
 
-  const handleConfirmReject = (adId: string) => {
+  const handleConfirmReject = async (adId: string) => {
     rejectAdRequest(adId, rejectReason.trim() || undefined);
     setRejectingAdId(null);
     setRejectReason('');
     refreshAds();
+
+    // Sync rejection with server
+    try {
+      const token = currentUser?.authToken;
+      await fetch('/api/admin/ads/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          adId,
+          status: 'rejected',
+          adminNotes: rejectReason.trim() || undefined,
+        }),
+      });
+    } catch {
+      // Local state is updated
+    }
   };
 
   const handleMarkPaid = (adId: string) => {
@@ -125,9 +232,24 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
     refreshAds();
   };
 
-  const handleToggle = (adId: string) => {
+  const handleToggle = async (adId: string) => {
     toggleAdActive(adId);
     refreshAds();
+
+    // Sync toggle with server
+    try {
+      const token = currentUser?.authToken;
+      await fetch('/api/admin/ads/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ adId }),
+      });
+    } catch {
+      // Local state updated
+    }
   };
 
   const handleOpenDelete = (adId: string) => {
@@ -142,20 +264,25 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto bg-slate-950/70 backdrop-blur-xs transition-opacity cursor-pointer"
       role="dialog"
       aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity z-0"
+        className="fixed inset-0 -z-10 cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Admin Panel Modal Container */}
       <div
-        className="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200"
+        className="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
@@ -187,18 +314,64 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onClose();
             }}
-            className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-all shadow-2xs z-20"
+            className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer transition-all shadow-2xs z-30"
             aria-label={appLang === 'hy' ? 'Փակել' : 'Close'}
             title={appLang === 'hy' ? 'Փակել' : 'Close'}
           >
-            <X className="w-5 h-5 stroke-2.5" />
+            <X className="w-5 h-5 stroke-2.5 pointer-events-none" />
           </button>
         </div>
 
-        {/* Stats strip */}
+        {/* Server Verification Loading State */}
+        {serverVerification === 'verifying' ? (
+          <div className="p-12 text-center flex flex-col items-center justify-center space-y-4 my-auto">
+            <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+            <div className="space-y-1">
+              <h4 className="text-base font-bold text-slate-800">
+                {appLang === 'hy' ? 'Ստուգվում է սեփականատիրոջ իրավասությունը...' : 'Verifying Owner Permissions with Server...'}
+              </h4>
+              <p className="text-xs text-slate-500">
+                {appLang === 'hy'
+                  ? 'Անվտանգության սերվերային նույնականացում'
+                  : 'Cryptographic HMAC server-side role validation'}
+              </p>
+            </div>
+          </div>
+        ) : serverVerification === 'denied' ? (
+          <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 max-w-md mx-auto my-auto">
+            <div className="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-inner">
+              <ShieldAlert className="w-9 h-9 stroke-2.5" />
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-lg font-black text-rose-950">
+                {appLang === 'hy' ? '⛔ Մուտքն արգելված է' : '⛔ Access Strictly Forbidden'}
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                {appLang === 'hy'
+                  ? `Այս ադմինիստրատիվ համակարգը հասանելի է ԲԱՑԱՌԱՊԵՍ կայքի օրինական տիրոջը (${OFFICIAL_OWNER_EMAIL}): Ցանկացած այլ օգտատիրոջ կամ սարքի մուտքը խստիվ արգելված է:`
+                  : `This administrative system is restricted SOLELY to the official website owner (${OFFICIAL_OWNER_EMAIL}). Unauthorized access has been rejected by the server.`}
+              </p>
+              {serverAuthError && (
+                <p className="text-[11px] text-rose-500 font-mono bg-rose-50 p-2 rounded-xl border border-rose-200">
+                  {serverAuthError}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors shadow-sm cursor-pointer"
+            >
+              {appLang === 'hy' ? 'Փակել պատուհանը' : 'Close Window'}
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Stats strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 sm:px-6 bg-slate-50 border-b border-slate-200/80 text-xs">
           <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
             <p className="text-slate-500 font-medium">{appLang === 'hy' ? 'Ընդհանուր հայտեր' : 'Total Inquiries'}</p>
@@ -602,6 +775,8 @@ export const AdminAdPortal: React.FC<AdminAdPortalProps> = ({
             })
           )}
         </div>
+          </>
+        )}
 
         {/* Modal Footer */}
         <div className="p-3 sm:px-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500">

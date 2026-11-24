@@ -149,6 +149,81 @@ export interface UserProfile {
   englishLevel: 'beginner' | 'elementary' | 'intermediate';
   dailyGoalMinutes: number;
   registeredAt: string;
+  role?: 'super_admin' | 'student';
+  authToken?: string;
+}
+
+export interface DailyMission {
+  id: string;
+  titleHy: string;
+  titleEn: string;
+  target: number;
+  current: number;
+  xpReward: number;
+  completed: boolean;
+  claimed: boolean;
+  category: 'lessons' | 'vocab' | 'quiz' | 'listening' | 'speaking';
+}
+
+export interface QuizStats {
+  totalQuizzesTaken: number;
+  totalQuestionsAnswered: number;
+  totalCorrectAnswers: number;
+  bestStreak: number;
+  lastQuizDate?: string;
+}
+
+export interface ReviewItem {
+  id: string; // word or question id
+  type: 'word' | 'grammar' | 'false-friend' | 'listening' | 'sentence';
+  promptEn: string;
+  promptHy: string;
+  answer: string;
+  options?: string[];
+  explanationHy: string;
+  explanationEn: string;
+  mistakeCount: number;
+  correctConsecutive: number;
+  lastReviewedAt: string;
+}
+
+export interface WeeklyDayActivity {
+  dayHy: string;
+  dayEn: string;
+  dateStr: string;
+  minutesSpent: number;
+  xpEarned: number;
+  active: boolean;
+}
+
+export interface LeaderboardUser {
+  id: string;
+  name: string;
+  avatar: string;
+  userXP: number;
+  streakCount: number;
+  levelNumber: number;
+  levelTitleHy: string;
+  levelTitleEn: string;
+  isCurrentUser?: boolean;
+  rank?: number;
+}
+
+export interface ListeningExercise {
+  id: string;
+  phraseEn: string;
+  translationHy: string;
+  translationEn: string;
+  phonetic: string;
+  armenianPhonetic: string;
+  focusSound: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tipHy: string;
+  tipEn: string;
+  audioSpeed?: number;
+  options?: string[];
+  missingWord?: string;
+  type: 'dictation' | 'choice' | 'pronunciation';
 }
 
 export interface UserProgressData {
@@ -156,6 +231,11 @@ export interface UserProgressData {
   masteredWordIds: string[];
   streakCount: number;
   userXP: number;
+  quizStats?: QuizStats;
+  dailyMissions?: DailyMission[];
+  dailyMissionsDate?: string;
+  reviewPool?: ReviewItem[];
+  weeklyActivity?: WeeklyDayActivity[];
 }
 
 export type AdPlacement = 'hero_top' | 'sidebar_dashboard' | 'lesson_footer' | 'quiz_finish';

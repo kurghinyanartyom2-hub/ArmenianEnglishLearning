@@ -1,4 +1,6 @@
 import { AdRequest, AdPlacement, AdDuration, AdStatus } from '../types';
+import { db } from '../firebase';
+import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const STORAGE_KEY_ADS = 'hayenglish_ads_v1';
 
@@ -184,6 +186,31 @@ export const submitAdRequest = (data: {
 
   all.unshift(newRequest);
   saveAdRequests(all);
+
+  // Sync to Firestore asynchronously
+  try {
+    setDoc(doc(db, 'adRequests', newRequest.id), {
+      id: newRequest.id,
+      businessName: newRequest.businessName,
+      contactEmail: newRequest.contactEmail,
+      contactPhone: newRequest.contactPhone || '',
+      headline: newRequest.headline,
+      adText: newRequest.adText,
+      callToAction: newRequest.callToAction,
+      targetUrl: newRequest.targetUrl,
+      imageUrl: newRequest.imageUrl,
+      placement: newRequest.placement,
+      duration: newRequest.duration,
+      status: newRequest.status,
+      price: newRequest.price || null,
+      currency: newRequest.currency || 'AMD',
+      submittedAt: newRequest.submittedAt,
+      submitterUserId: newRequest.submitterUserId || '',
+    }).catch((err) => console.warn('[Firestore] Ad sync deferred:', err));
+  } catch (err) {
+    console.warn('[Firestore] Ad write error:', err);
+  }
+
   return newRequest;
 };
 
@@ -206,6 +233,17 @@ export const reviewAndSetPrice = (
   }
 
   saveAdRequests(all);
+
+  try {
+    updateDoc(doc(db, 'adRequests', adId), {
+      price,
+      currency,
+      status: 'approved',
+      reviewedAt: all[idx].reviewedAt,
+      adminNotes: adminNotes || '',
+    }).catch(() => {});
+  } catch {}
+
   return true;
 };
 
@@ -221,6 +259,15 @@ export const rejectAdRequest = (adId: string, adminNotes?: string): boolean => {
   }
 
   saveAdRequests(all);
+
+  try {
+    updateDoc(doc(db, 'adRequests', adId), {
+      status: 'rejected',
+      reviewedAt: all[idx].reviewedAt,
+      adminNotes: adminNotes || '',
+    }).catch(() => {});
+  } catch {}
+
   return true;
 };
 
@@ -253,6 +300,15 @@ export const markAdAsPaidAndActivate = (adId: string): boolean => {
   all[idx].expiresAt = expiry.toISOString();
 
   saveAdRequests(all);
+
+  try {
+    updateDoc(doc(db, 'adRequests', adId), {
+      status: 'active',
+      paidAt: now.toISOString(),
+      expiresAt: expiry.toISOString(),
+    }).catch(() => {});
+  } catch {}
+
   return true;
 };
 
@@ -260,6 +316,11 @@ export const deleteAdRequest = (adId: string): boolean => {
   const all = getAdRequests();
   const filtered = all.filter((a) => a.id !== adId);
   saveAdRequests(filtered);
+
+  try {
+    deleteDoc(doc(db, 'adRequests', adId)).catch(() => {});
+  } catch {}
+
   return true;
 };
 

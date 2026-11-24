@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppLanguage, UserProfile } from '../types';
 import { isOwnerAdmin } from '../utils/authStorage';
-import { Flame, BookOpen, Sparkles, SlidersHorizontal, Globe, Zap, LogOut, Megaphone, ShieldCheck } from 'lucide-react';
+import { Flame, BookOpen, Sparkles, SlidersHorizontal, Globe, Zap, LogOut, Megaphone, ShieldCheck, Target, RotateCcw, Trophy, Headphones } from 'lucide-react';
 import { AppLogo } from './AppLogo';
 
 interface HeaderProps {
@@ -18,6 +18,9 @@ interface HeaderProps {
   onLogout?: () => void;
   onOpenAdRequestModal?: () => void;
   onOpenAdminPortal?: () => void;
+  onOpenMissions?: () => void;
+  reviewPoolCount?: number;
+  missionsCompletedCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,6 +37,9 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenAdRequestModal,
   onOpenAdminPortal,
+  onOpenMissions,
+  reviewPoolCount = 0,
+  missionsCompletedCount = 0,
 }) => {
   const tabs = [
     {
@@ -49,10 +55,35 @@ export const Header: React.FC<HeaderProps> = ({
       icon: '📚',
     },
     {
-      id: 'vocabulary',
-      labelHy: 'Բառապաշար',
-      labelEn: 'Vocabulary',
-      icon: '🗂️',
+      id: 'library',
+      labelHy: 'Բառարան',
+      labelEn: 'Library',
+      icon: '📖',
+    },
+    {
+      id: 'listen-speak',
+      labelHy: 'Լսել & Խոսել',
+      labelEn: 'Listen & Speak',
+      icon: '🎧',
+    },
+    {
+      id: 'quiz',
+      labelHy: 'Թեստ',
+      labelEn: 'Quiz',
+      icon: '🎯',
+    },
+    {
+      id: 'review',
+      labelHy: 'Կրկնություն',
+      labelEn: 'Review',
+      icon: '🔄',
+      badge: reviewPoolCount > 0 ? reviewPoolCount : undefined,
+    },
+    {
+      id: 'leaderboard',
+      labelHy: 'Առաջատարներ',
+      labelEn: 'Leaderboard',
+      icon: '🏆',
     },
     {
       id: 'false-friends',
@@ -77,12 +108,6 @@ export const Header: React.FC<HeaderProps> = ({
       labelHy: 'Իդիոմներ',
       labelEn: 'Idioms',
       icon: '✨',
-    },
-    {
-      id: 'quiz',
-      labelHy: 'Թեստ',
-      labelEn: 'Quiz',
-      icon: '🎯',
     },
   ];
 
@@ -111,15 +136,29 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{userXP} XP</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('dashboard')}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-900 font-semibold border border-blue-200/80 shadow-xs cursor-pointer transition-colors"
-            title={appLang === 'hy' ? 'Բացել ուսանողի վահանակը' : 'Open Student Dashboard'}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>{masteredWordsCount} {appLang === 'hy' ? 'յուրացված բառ' : 'words mastered'}</span>
-          </button>
+          {onOpenMissions && (
+            <button
+              type="button"
+              onClick={onOpenMissions}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-900 font-bold border border-indigo-200/80 shadow-xs cursor-pointer transition-colors"
+              title={appLang === 'hy' ? 'Օրվա առաքելություններ' : 'Daily Missions'}
+            >
+              <Target className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{appLang === 'hy' ? `Առաքելություններ (${missionsCompletedCount}/4)` : `Missions (${missionsCompletedCount}/4)`}</span>
+            </button>
+          )}
+
+          {reviewPoolCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('review')}
+              className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-800 font-bold border border-rose-200/80 shadow-xs cursor-pointer transition-colors animate-pulse"
+              title={appLang === 'hy' ? 'Սխալների կրկնություն' : 'Spaced Review'}
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+              <span>{reviewPoolCount} {appLang === 'hy' ? 'կրկնության ենթակա' : 'to review'}</span>
+            </button>
+          )}
         </div>
 
         {/* Controls: User Account, Audio Speed, UI Language Toggle, Log Out */}
@@ -192,13 +231,13 @@ export const Header: React.FC<HeaderProps> = ({
           {onOpenAdRequestModal && (
             <button
               type="button"
-              onClick={onOpenAdRequestModal}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold border border-amber-200/80 cursor-pointer transition-all active:scale-95 text-xs shadow-2xs"
-              title={appLang === 'hy' ? 'Գովազդեք HayEnglish-ում' : 'Advertise with us'}
+              onClick={() => onOpenAdRequestModal()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-950 font-extrabold border border-amber-200/90 cursor-pointer transition-all text-xs shadow-2xs hover:shadow-xs"
+              title={appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Advertise with us'}
             >
               <Megaphone className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden sm:inline">{appLang === 'hy' ? 'Գովազդ մեզ մոտ' : 'Advertise with us'}</span>
-              <span className="sm:hidden">{appLang === 'hy' ? 'Գովազդ' : 'Ads'}</span>
+              <span className="hidden sm:inline">{appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Advertise with us'}</span>
+              <span className="sm:hidden">{appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Ads'}</span>
             </button>
           )}
 
@@ -244,6 +283,11 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span>{tab.icon}</span>
                 <span>{appLang === 'hy' ? tab.labelHy : tab.labelEn}</span>
+                {tab.badge !== undefined && (
+                  <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}

@@ -26,6 +26,8 @@ interface DailyQuizProps {
   userXP?: number;
   onAddXP?: (points: number) => void;
   onOpenAdRequestModal?: () => void;
+  onMistake?: (question: QuizQuestion) => void;
+  onQuizComplete?: (totalQuestions: number, correctAnswers: number) => void;
 }
 
 // Gentle Web Audio API synthesizer for positive feedback
@@ -85,6 +87,8 @@ export const DailyQuiz: React.FC<DailyQuizProps> = ({
   userXP = 0,
   onAddXP,
   onOpenAdRequestModal,
+  onMistake,
+  onQuizComplete,
 }) => {
   // Category filter state
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -148,6 +152,9 @@ export const DailyQuiz: React.FC<DailyQuizProps> = ({
         setStreak(0);
         // Penalty for incorrect answer: deduct 10 XP
         earnedXP = -10;
+        if (onMistake) {
+          onMistake(currentQ);
+        }
       }
 
       setLastEarnedXP(earnedXP);
@@ -166,7 +173,7 @@ export const DailyQuiz: React.FC<DailyQuizProps> = ({
         },
       ]);
     },
-    [isAnswered, currentQ, streak, onAddXP, soundEnabled]
+    [isAnswered, currentQ, streak, onAddXP, soundEnabled, onMistake]
   );
 
   const handleNextQuestion = () => {
@@ -177,6 +184,9 @@ export const DailyQuiz: React.FC<DailyQuizProps> = ({
       setIsAnswered(false);
     } else {
       setQuizFinished(true);
+      if (onQuizComplete) {
+        onQuizComplete(filteredQuestions.length, score);
+      }
     }
   };
 

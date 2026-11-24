@@ -63,7 +63,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           onClick={() => onOpenAdRequestModal(placement)}
           className="shrink-0 self-start sm:self-center px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold text-xs cursor-pointer shadow-2xs hover:shadow-xs transition-all"
         >
-          {appLang === 'hy' ? 'Գովազդել այստեղ' : 'Advertise with us'}
+          {appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Advertise with us'}
         </button>
       </div>
     );

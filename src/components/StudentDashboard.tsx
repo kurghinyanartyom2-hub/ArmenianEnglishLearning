@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { LessonSection, VocabularyWord, AppLanguage, CEFRLevel, StudentAchievement, UserProfile } from '../types';
+import {
+  LessonSection,
+  VocabularyWord,
+  AppLanguage,
+  CEFRLevel,
+  StudentAchievement,
+  UserProfile,
+  QuizStats,
+  DailyMission,
+} from '../types';
 import { isOwnerAdmin } from '../utils/authStorage';
+import { calculateAccuracy, getWeeklyActivity } from '../utils/gamification';
 import { AppLogoIcon } from './AppLogo';
 import { AdBanner } from './AdBanner';
 import {
@@ -23,6 +33,9 @@ import {
   TrendingUp,
   LogOut,
   User,
+  Activity,
+  PieChart,
+  Clock,
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -38,6 +51,10 @@ interface StudentDashboardProps {
   currentUser?: UserProfile | null;
   onLogout?: () => void;
   onOpenAdRequestModal?: () => void;
+  quizStats?: QuizStats;
+  dailyMissions?: DailyMission[];
+  onOpenMissions?: () => void;
+  reviewPoolCount?: number;
 }
 
 interface LevelInfo {
@@ -134,9 +151,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   currentUser,
   onLogout,
   onOpenAdRequestModal,
+  quizStats,
+  dailyMissions = [],
+  onOpenMissions,
+  reviewPoolCount = 0,
 }) => {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [activeLevelFilter, setActiveLevelFilter] = useState<'ALL' | CEFRLevel>('ALL');
+  const [showOnlyMasteredWords, setShowOnlyMasteredWords] = useState<boolean>(false);
+
+  const accuracyPercent = calculateAccuracy(quizStats);
+  const weeklyActivity = getWeeklyActivity(userXP, streakCount);
+  const completedMissionsCount = dailyMissions.filter((m) => m.completed).length;
 
   // Compute student level based on userXP
   const currentLevelIndex = LEVEL_TIERS.findIndex(
@@ -541,6 +567,81 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <span className="text-indigo-700 font-bold">{overallProgressScore}%</span>
           </div>
         </div>
+
+        {/* Quiz Accuracy Card (New) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3 hover:border-purple-300 transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {appLang === 'hy' ? 'Թեստերի ճշգրտություն' : 'Quiz Accuracy'}
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700 shadow-2xs">
+              <PieChart className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="text-3xl font-black text-slate-900 tracking-tight">
+              {quizStats && quizStats.totalQuestionsAnswered > 0 ? `${accuracyPercent}%` : '100%'}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {quizStats ? `${quizStats.totalCorrectAnswers} / ${quizStats.totalQuestionsAnswered} ` : '0 '}
+              {appLang === 'hy' ? 'ճիշտ պատասխան' : 'correct answers'}
+            </p>
+          </div>
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+            <span>{appLang === 'hy' ? 'Լավագույն սերիա՝' : 'Best Streak:'}</span>
+            <span className="text-purple-700 font-bold">{quizStats?.bestStreak || 0} 🔥</span>
+          </div>
+        </div>
+
+        {/* Daily Missions & Review Pool Status Card (New) */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-3 hover:border-indigo-300 transition-colors flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {appLang === 'hy' ? 'Օրվա առաքելություններ' : 'Daily Missions'}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 shadow-2xs">
+                <Target className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <div className="text-2xl font-black text-slate-900">
+                {completedMissionsCount} / {Math.max(1, dailyMissions.length)}
+              </div>
+              <span className="text-xs font-bold text-emerald-600">
+                {completedMissionsCount === dailyMissions.length && dailyMissions.length > 0 ? '✓ All done' : ''}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {reviewPoolCount > 0
+                ? appLang === 'hy'
+                  ? `${reviewPoolCount} բառ սպասում է կրկնության`
+                  : `${reviewPoolCount} words in review pool`
+                : appLang === 'hy'
+                ? 'Կրկնության սպասող սխալներ չկան'
+                : 'No mistakes awaiting review'}
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+            {onOpenMissions && (
+              <button
+                type="button"
+                onClick={onOpenMissions}
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] text-center cursor-pointer transition-colors"
+              >
+                {appLang === 'hy' ? 'Առաքելություններ' : 'Missions'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onNavigateTab('review')}
+              className="flex-1 py-1.5 px-2.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[11px] text-center cursor-pointer transition-colors"
+            >
+              {appLang === 'hy' ? 'Կրկնություն' : 'Review'}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -807,6 +908,101 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <ArrowRight className="w-3.5 h-3.5 text-indigo-600" />
           </button>
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4.5 LEARNED WORDS EXPLORER & REVIEW SYSTEM PROMPT                         */}
+      {/* ========================================================================= */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+              <span>{appLang === 'hy' ? 'Իմ յուրացրած բառերը' : 'Learned Words & Vocabulary'}</span>
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              {appLang === 'hy'
+                ? `Դուք յուրացրել եք ${masteredWordIds.length} բառ: Դիտեք բառերը կամ կրկնեք դժվար բառերը:`
+                : `You have mastered ${masteredWordIds.length} words. Practice or review below:`}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowOnlyMasteredWords(!showOnlyMasteredWords)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                showOnlyMasteredWords
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {showOnlyMasteredWords
+                ? appLang === 'hy' ? 'Միայն յուրացվածները' : 'Mastered only'
+                : appLang === 'hy' ? 'Բոլոր բառերը' : 'All words'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('library')}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>{appLang === 'hy' ? 'Բառարան' : 'Full Library'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Word Chips Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {words
+            .filter((w) => !showOnlyMasteredWords || masteredWordIds.includes(w.id))
+            .slice(0, 9)
+            .map((w) => {
+              const isMastered = masteredWordIds.includes(w.id);
+              return (
+                <div
+                  key={w.id}
+                  className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-2 ${
+                    isMastered
+                      ? 'bg-emerald-50/40 border-emerald-200/80 shadow-2xs'
+                      : 'bg-slate-50/60 border-slate-200/80'
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-extrabold text-xs sm:text-sm text-slate-900">
+                        {w.english}
+                      </span>
+                      {isMastered && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 font-semibold">{w.armenian}</p>
+                    <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
+                      {w.armenianPhonetic}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] uppercase font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-200/60 shrink-0">
+                    {w.partOfSpeech}
+                  </span>
+                </div>
+              );
+            })}
+        </div>
+
+        {words.filter((w) => !showOnlyMasteredWords || masteredWordIds.includes(w.id)).length > 9 && (
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={() => onNavigateTab('library')}
+              className="text-xs font-extrabold text-indigo-600 hover:text-indigo-700 hover:underline cursor-pointer inline-flex items-center gap-1"
+            >
+              <span>{appLang === 'hy' ? 'Տեսնել բոլոր բառերը բառարանում' : 'View all words in Vocabulary Library'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

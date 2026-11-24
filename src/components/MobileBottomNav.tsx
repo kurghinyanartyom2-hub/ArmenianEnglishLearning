@@ -38,6 +38,8 @@ interface MobileBottomNavProps {
   onLogout?: () => void;
   onOpenAdRequestModal?: () => void;
   onOpenAdminPortal?: () => void;
+  onOpenMissions?: () => void;
+  reviewPoolCount?: number;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -56,6 +58,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onLogout,
   onOpenAdRequestModal,
   onOpenAdminPortal,
+  onOpenMissions,
+  reviewPoolCount = 0,
 }) => {
   const [showMoreMenu, setShowMoreMenu] = useState<boolean>(false);
 
@@ -68,9 +72,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       badge: `${completedLessonsCount}/${totalLessonsCount}`,
     },
     {
-      id: 'vocabulary',
-      labelHy: 'Բառեր',
-      labelEn: 'Cards',
+      id: 'library',
+      labelHy: 'Բառարան',
+      labelEn: 'Library',
       icon: Layers,
       badge: masteredWordsCount > 0 ? `${masteredWordsCount}` : undefined,
     },
@@ -93,6 +97,34 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   ];
 
   const moreItems = [
+    {
+      id: 'listen-speak',
+      titleHy: 'Լսել & Արտասանել',
+      titleEn: 'Listen & Pronounce',
+      descHy: 'Լսողական թեստեր և ձայնագրման վարժություններ',
+      descEn: 'Audio comprehension and speech recognition practice',
+      icon: '🎧',
+      badge: '+25 XP',
+    },
+    {
+      id: 'review',
+      titleHy: 'Սխալների կրկնություն',
+      titleEn: 'Spaced Review',
+      descHy: 'Կրկնեք սխալ պատասխանած բառերն ու հարցերը',
+      descEn: 'Review questions you answered incorrectly',
+      icon: '🔄',
+      badge: reviewPoolCount > 0 ? `${reviewPoolCount}` : undefined,
+      badgeColor: 'bg-rose-500 text-white',
+    },
+    {
+      id: 'leaderboard',
+      titleHy: 'Առաջատարներ',
+      titleEn: 'Leaderboard',
+      descHy: 'Սովորողների ընդհանուր վարկանիշ և մակարդակներ',
+      descEn: 'Community standings, streaks, and levels',
+      icon: '🏆',
+      badge: 'Top',
+    },
     {
       id: 'false-friends',
       titleHy: 'Թակարդ բառեր',
@@ -249,7 +281,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 >
                   <div className="flex items-center gap-1.5 text-xs font-bold mb-0.5">
                     <Megaphone className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{appLang === 'hy' ? 'Գովազդ մեզ մոտ' : 'Advertise'}</span>
+                    <span>{appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Advertise'}</span>
                   </div>
                   <p className="text-[10px] text-amber-800 line-clamp-1">
                     {appLang === 'hy' ? 'Ներկայացնել հայտ' : 'Partner with us'}

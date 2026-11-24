@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        (request.auth.token.email == 'kurghinyanartyom2@gmail.com' ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin' &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == 'kurghinyanartyom2@gmail.com'));
+    }
+
+    function isValidId(id) {
+      return id is string && id.matches('^[a-zA-Z0-9_\\-]+$') && id.size() > 0 && id.size() <= 128;
+    }
+
+    // User Profile Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) &&
+        request.resource.data.id == userId &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 100 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 120 &&
+        (!('role' in request.resource.data) ||
+         (request.resource.data.role == 'student') ||
+         (request.resource.data.role == 'super_admin' && request.resource.data.email == 'kurghinyanartyom2@gmail.com'));
+      
+      allow update: if isOwner(userId) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['id', 'email', 'role']) ||
+         isSuperAdmin());
+
+      allow delete: if isSuperAdmin();
+
+      // Progress subcollection
+      match /progress/{progressDoc} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if isOwner(userId) || isSuperAdmin();
+      }
+    }
+
+    // Ad Requests Collection
+    match /adRequests/{adId} {
+      // Anyone can read active ads; super admin can read all ads; submitters can read their own
+      allow get: if resource.data.status == 'active' ||
+                    isSuperAdmin() ||
+                    (isSignedIn() && resource.data.submitterUserId == request.auth.uid);
+
+      allow list: if isSuperAdmin() ||
+                     (resource.data.status == 'active');
+
+      // Anyone (or authenticated users) can submit a new ad request in pending_review status
+      allow create: if isValidId(adId) &&
+        request.resource.data.id == adId &&
+        request.resource.data.status == 'pending_review' &&
+        request.resource.data.businessName is string && request.resource.data.businessName.size() <= 120 &&
+        request.resource.data.contactEmail is string && request.resource.data.contactEmail.size() <= 120 &&
+        request.resource.data.headline is string && request.resource.data.headline.size() <= 140 &&
+        request.resource.data.adText is string && request.resource.data.adText.size() <= 500 &&
+        (!('submitterUserId' in request.resource.data) ||
+         !isSignedIn() ||
+         request.resource.data.submitterUserId == request.auth.uid);
+
+      // Only super admin can review, approve, edit, or reject ads
+      allow update, delete: if isSuperAdmin();
+    }
+  }
+}

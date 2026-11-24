@@ -113,22 +113,26 @@ export const AdRequestModal: React.FC<AdRequestModalProps> = ({
 
   // Update placement if initialPlacement changes
   useEffect(() => {
-    if (initialPlacement) {
-      setPlacement(initialPlacement);
+    const valid: AdPlacement[] = ['hero_top', 'sidebar_dashboard', 'lesson_footer', 'quiz_finish'];
+    if (typeof initialPlacement === 'string' && valid.includes(initialPlacement as AdPlacement)) {
+      setPlacement(initialPlacement as AdPlacement);
     }
   }, [initialPlacement]);
 
-  // Handle escape key to close modal
+  // Handle escape key to close modal (using capture phase to intercept anywhere)
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' || e.code === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose]);
 
   // Automatically refresh inquiries when modal opens
@@ -197,6 +201,31 @@ export const AdRequestModal: React.FC<AdRequestModalProps> = ({
         submitterUserId: currentUser?.id,
       });
 
+      // Synchronize with server backend endpoint asynchronously
+      try {
+        fetch('/api/ads/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(currentUser?.authToken ? { Authorization: `Bearer ${currentUser.authToken}` } : {}),
+          },
+          body: JSON.stringify({
+            businessName: businessName.trim(),
+            contactEmail: contactEmail.trim(),
+            contactPhone: contactPhone.trim() || undefined,
+            headline: headline.trim(),
+            adText: adText.trim(),
+            callToAction: callToAction.trim() || 'Learn More',
+            targetUrl: targetUrl.trim() || 'https://',
+            imageUrl: imageUrl.trim() || PRESET_LOGOS[0].url,
+            placement,
+            duration,
+          }),
+        }).catch(() => {});
+      } catch {
+        // Continue seamlessly
+      }
+
       setIsSubmitting(false);
       setSubmitSuccess(true);
       setInquiries(getAdRequests());
@@ -231,20 +260,25 @@ export const AdRequestModal: React.FC<AdRequestModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto bg-slate-950/70 backdrop-blur-xs transition-opacity cursor-pointer"
       role="dialog"
       aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
-      {/* Backdrop */}
+      {/* Full screen backdrop click catcher */}
       <div
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs transition-opacity z-0"
+        className="fixed inset-0 -z-10 cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal Dialog */}
       <div
-        className="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200"
+        className="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
@@ -256,7 +290,7 @@ export const AdRequestModal: React.FC<AdRequestModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                  {appLang === 'hy' ? 'Գովազդեք HayEnglish-ում' : 'Advertise with HayEnglish'}
+                  {appLang === 'hy' ? 'Գովազդ մեր մոտ — HayEnglish' : 'Advertise with HayEnglish'}
                 </h3>
                 <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-[10px]">
                   B2B Partners
@@ -291,14 +325,15 @@ export const AdRequestModal: React.FC<AdRequestModalProps> = ({
             <button
               type="button"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onClose();
               }}
-              className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 hover:text-slate-900 flex items-center justify-center cursor-pointer transition-all shadow-2xs z-20"
+              className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 hover:text-slate-900 flex items-center justify-center cursor-pointer transition-all shadow-2xs z-30"
               aria-label={appLang === 'hy' ? 'Փակել' : 'Close'}
               title={appLang === 'hy' ? 'Փակել' : 'Close'}
             >
-              <X className="w-5 h-5 stroke-2.5" />
+              <X className="w-5 h-5 stroke-2.5 pointer-events-none" />
             </button>
           </div>
         </div>

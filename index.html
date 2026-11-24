@@ -13,6 +13,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Armenian:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      // Runtime constraint: Suppress HMR / Vite WebSocket rejection errors in iframe preview
+      window.addEventListener('unhandledrejection', function (event) {
+        if (
+          event &&
+          event.reason &&
+          typeof event.reason.message === 'string' &&
+          (event.reason.message.includes('WebSocket') || event.reason.message.includes('websocket'))
+        ) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('error', function (event) {
+        if (
+          event &&
+          event.message &&
+          typeof event.message === 'string' &&
+          (event.message.includes('WebSocket') || event.message.includes('websocket'))
+        ) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body class="bg-[#f6f8fd] text-[#0f172a] antialiased">
     <div id="root"></div>

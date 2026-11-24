@@ -1,18 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { AppLanguage, UserProfile, AdPlacement } from './types';
+import {
+  AppLanguage,
+  UserProfile,
+  AdPlacement,
+  QuizStats,
+  DailyMission,
+  ReviewItem,
+  QuizQuestion,
+  ListeningExercise,
+  VocabularyWord,
+} from './types';
 import { LESSONS_DATA } from './data/lessonsData';
 import { VOCABULARY_DATA } from './data/vocabularyData';
 import { FALSE_FRIENDS_DATA, IDIOMS_DATA } from './data/falseFriendsData';
 import { SENTENCE_PUZZLES } from './data/sentenceBuilderData';
 import { QUIZ_QUESTIONS } from './data/quizData';
 import { DIALOGUES_DATA } from './data/dialoguesData';
+import { LISTENING_EXERCISES } from './data/listeningData';
 import {
   getActiveSessionUser,
   getUserProgress,
   saveUserProgress,
   logoutSession,
   isOwnerAdmin,
+  syncProgressFromFirestore,
 } from './utils/authStorage';
+import {
+  getOrCreateDailyMissions,
+  recordMissionAction,
+  recordQuizCompletion,
+  addMistakeToReviewPool,
+  getLeaderboardData,
+} from './utils/gamification';
 
 import { AuthScreen } from './components/AuthScreen';
 import { Header } from './components/Header';
@@ -31,6 +50,11 @@ import { AppLogo } from './components/AppLogo';
 import { AdBanner } from './components/AdBanner';
 import { AdRequestModal } from './components/AdRequestModal';
 import { AdminAdPortal } from './components/AdminAdPortal';
+import { VocabularyLibrary } from './components/VocabularyLibrary';
+import { ListeningAndPronunciation } from './components/ListeningAndPronunciation';
+import { ReviewSystem } from './components/ReviewSystem';
+import { LeaderboardView } from './components/LeaderboardView';
+import { DailyMissionsModal } from './components/DailyMissionsModal';
 
 import {
   Sparkles,
@@ -68,9 +92,11 @@ export default function App() {
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState<boolean>(false);
   const [adModalInitialPlacement, setAdModalInitialPlacement] = useState<AdPlacement>('hero_top');
 
-  const handleOpenAdRequestModal = (placement?: AdPlacement) => {
-    if (placement) {
-      setAdModalInitialPlacement(placement);
+  const handleOpenAdRequestModal = (placement?: AdPlacement | unknown) => {
+    if (typeof placement === 'string' && ['hero_top', 'sidebar_dashboard', 'lesson_footer', 'quiz_finish'].includes(placement)) {
+      setAdModalInitialPlacement(placement as AdPlacement);
+    } else {
+      setAdModalInitialPlacement('hero_top');
     }
     setIsAdModalOpen(true);
   };
@@ -122,7 +148,26 @@ export default function App() {
     return 0;
   });
 
-  // Load progress when currentUser changes
+  const [quizStats, setQuizStats] = useState<QuizStats | undefined>(() => {
+    const active = getActiveSessionUser();
+    return active ? getUserProgress(active.id).quizStats : undefined;
+  });
+
+  const [dailyMissions, setDailyMissions] = useState<DailyMission[]>(() => {
+    const active = getActiveSessionUser();
+    const prog = active ? getUserProgress(active.id) : null;
+    const { missions } = getOrCreateDailyMissions(prog?.dailyMissions, prog?.dailyMissionsDate);
+    return missions;
+  });
+
+  const [reviewPool, setReviewPool] = useState<ReviewItem[]>(() => {
+    const active = getActiveSessionUser();
+    return active ? getUserProgress(active.id).reviewPool || [] : [];
+  });
+
+  const [isMissionsModalOpen, setIsMissionsModalOpen] = useState<boolean>(false);
+
+  // Load progress when currentUser changes and sync from Firestore
   useEffect(() => {
     if (currentUser) {
       const userProg = getUserProgress(currentUser.id);
@@ -130,6 +175,24 @@ export default function App() {
       setMasteredWordIds(userProg.masteredWordIds || []);
       setStreakCount(userProg.streakCount || 1);
       setUserXP(userProg.userXP || 0);
+      setQuizStats(userProg.quizStats);
+      setReviewPool(userProg.reviewPool || []);
+
+      const { missions } = getOrCreateDailyMissions(userProg.dailyMissions, userProg.dailyMissionsDate);
+      setDailyMissions(missions);
+
+      // Asynchronous remote cross-device synchronization
+      syncProgressFromFirestore(currentUser.id).then((synced) => {
+        if (synced) {
+          setCompletedLessonIds(synced.completedLessonIds || []);
+          setMasteredWordIds(synced.masteredWordIds || []);
+          setStreakCount(synced.streakCount || 1);
+          setUserXP(synced.userXP || 0);
+          if (synced.quizStats) setQuizStats(synced.quizStats);
+          if (synced.reviewPool) setReviewPool(synced.reviewPool);
+          if (synced.dailyMissions) setDailyMissions(synced.dailyMissions);
+        }
+      });
     }
   }, [currentUser?.id]);
 
@@ -153,9 +216,22 @@ export default function App() {
         masteredWordIds,
         streakCount,
         userXP,
+        quizStats,
+        dailyMissions,
+        dailyMissionsDate: new Date().toISOString().split('T')[0],
+        reviewPool,
       });
     }
-  }, [currentUser, completedLessonIds, masteredWordIds, streakCount, userXP]);
+  }, [
+    currentUser,
+    completedLessonIds,
+    masteredWordIds,
+    streakCount,
+    userXP,
+    quizStats,
+    dailyMissions,
+    reviewPool,
+  ]);
 
   const handleAuthSuccess = (user: UserProfile) => {
     setCurrentUser(user);
@@ -164,6 +240,10 @@ export default function App() {
     setMasteredWordIds(userProg.masteredWordIds || []);
     setStreakCount(userProg.streakCount || 1);
     setUserXP(userProg.userXP || 0);
+    setQuizStats(userProg.quizStats);
+    setReviewPool(userProg.reviewPool || []);
+    const { missions } = getOrCreateDailyMissions(userProg.dailyMissions, userProg.dailyMissionsDate);
+    setDailyMissions(missions);
     setActiveTab('lessons');
   };
 
@@ -178,6 +258,10 @@ export default function App() {
       const isAlreadyDone = prev.includes(lessonId);
       if (!isAlreadyDone) {
         handleAddXP(25);
+        setDailyMissions((prevM) => {
+          const { updatedMissions } = recordMissionAction(prevM, 'lessons', 1);
+          return updatedMissions;
+        });
         return [...prev, lessonId];
       } else {
         return prev.filter((id) => id !== lessonId);
@@ -186,13 +270,79 @@ export default function App() {
   };
 
   const handleToggleMasteredWord = (wordId: string) => {
-    setMasteredWordIds((prev) =>
-      prev.includes(wordId) ? prev.filter((id) => id !== wordId) : [...prev, wordId]
-    );
+    setMasteredWordIds((prev) => {
+      const isNowMastered = !prev.includes(wordId);
+      if (isNowMastered) {
+        setDailyMissions((prevM) => {
+          const { updatedMissions } = recordMissionAction(prevM, 'vocab', 1);
+          return updatedMissions;
+        });
+        return [...prev, wordId];
+      } else {
+        return prev.filter((id) => id !== wordId);
+      }
+    });
   };
 
   const handleAddXP = (points: number) => {
     setUserXP((prev) => Math.max(0, prev + points));
+  };
+
+  const handleClaimMissionReward = (missionId: string, xpReward: number) => {
+    handleAddXP(xpReward);
+    setDailyMissions((prev) =>
+      prev.map((m) => (m.id === missionId ? { ...m, claimed: true } : m))
+    );
+  };
+
+  const handleRecordQuizCompletion = (totalQuestions: number, correctAnswers: number) => {
+    setQuizStats((prev) => recordQuizCompletion(prev, totalQuestions, correctAnswers));
+    setDailyMissions((prev) => {
+      const { updatedMissions } = recordMissionAction(prev, 'quiz', 1);
+      return updatedMissions;
+    });
+  };
+
+  const handleQuizMistake = (q: QuizQuestion) => {
+    const item: Omit<ReviewItem, 'mistakeCount' | 'correctConsecutive' | 'lastReviewedAt'> = {
+      id: `quiz_${q.id}`,
+      type: q.category === 'false-friends' ? 'false-friend' : 'grammar',
+      promptEn: q.questionEn,
+      promptHy: q.questionHy,
+      answer: q.options[q.correctIndex],
+      options: q.options,
+      explanationHy: q.explanationHy,
+      explanationEn: q.explanationEn,
+    };
+    setReviewPool((prev) => addMistakeToReviewPool(prev, item));
+  };
+
+  const handleExerciseMistake = (ex: ListeningExercise) => {
+    const item: Omit<ReviewItem, 'mistakeCount' | 'correctConsecutive' | 'lastReviewedAt'> = {
+      id: `ex_${ex.id}`,
+      type: 'listening',
+      promptEn: ex.phraseEn,
+      promptHy: ex.translationHy,
+      answer: ex.missingWord || ex.phraseEn,
+      options: ex.options,
+      explanationHy: ex.tipHy,
+      explanationEn: ex.tipEn,
+    };
+    setReviewPool((prev) => addMistakeToReviewPool(prev, item));
+  };
+
+  const handleAddToReview = (word: VocabularyWord) => {
+    const item: Omit<ReviewItem, 'mistakeCount' | 'correctConsecutive' | 'lastReviewedAt'> = {
+      id: `word_${word.id}`,
+      type: 'word',
+      promptEn: word.english,
+      promptHy: word.armenian,
+      answer: word.english,
+      options: [word.english, 'Option A', 'Option B', 'Option C'],
+      explanationHy: `${word.armenianPhonetic} — ${word.exampleHy}`,
+      explanationEn: word.exampleEn,
+    };
+    setReviewPool((prev) => addMistakeToReviewPool(prev, item));
   };
 
   const handleStartLearning = () => {
@@ -275,6 +425,9 @@ export default function App() {
         onLogout={handleLogout}
         onOpenAdRequestModal={handleOpenAdRequestModal}
         onOpenAdminPortal={handleOpenAdminPortal}
+        onOpenMissions={() => setIsMissionsModalOpen(true)}
+        reviewPoolCount={reviewPool.length}
+        missionsCompletedCount={dailyMissions.filter((m) => m.completed).length}
       />
 
       {/* Main Content Area */}
@@ -341,11 +494,15 @@ export default function App() {
               <div className="flex items-center gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('dashboard')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs sm:text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-98"
+                  onClick={() => setIsMissionsModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-98"
                 >
-                  <span>{appLang === 'hy' ? 'Իմ վահանակը' : 'My Dashboard'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>
+                    {appLang === 'hy'
+                      ? `Առաքելություններ (${dailyMissions.filter((m) => m.completed).length}/4)`
+                      : `Missions (${dailyMissions.filter((m) => m.completed).length}/4)`}
+                  </span>
                 </button>
 
                 <button
@@ -377,6 +534,54 @@ export default function App() {
               currentUser={currentUser}
               onLogout={handleLogout}
               onOpenAdRequestModal={handleOpenAdRequestModal}
+              quizStats={quizStats}
+              dailyMissions={dailyMissions}
+              onOpenMissions={() => setIsMissionsModalOpen(true)}
+              reviewPoolCount={reviewPool.length}
+            />
+          )}
+
+          {activeTab === 'library' && (
+            <VocabularyLibrary
+              words={VOCABULARY_DATA}
+              appLang={appLang}
+              speechSpeed={speechSpeed}
+              masteredWordIds={masteredWordIds}
+              onToggleMastered={handleToggleMasteredWord}
+              onAddXP={handleAddXP}
+              onAddToReview={handleAddToReview}
+            />
+          )}
+
+          {activeTab === 'listen-speak' && (
+            <ListeningAndPronunciation
+              exercises={LISTENING_EXERCISES}
+              appLang={appLang}
+              speechSpeed={speechSpeed}
+              onAddXP={handleAddXP}
+              onMistake={handleExerciseMistake}
+            />
+          )}
+
+          {activeTab === 'review' && (
+            <ReviewSystem
+              reviewPool={reviewPool}
+              onUpdateReviewPool={(updated) => setReviewPool(updated)}
+              appLang={appLang}
+              speechSpeed={speechSpeed}
+              onAddXP={handleAddXP}
+              onNavigateTab={handleNavigateTab}
+            />
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <LeaderboardView
+              leaderboardUsers={getLeaderboardData(currentUser, userXP, streakCount)}
+              currentUser={currentUser}
+              currentUserXP={userXP}
+              currentStreak={streakCount}
+              appLang={appLang}
+              onNavigateTab={handleNavigateTab}
             />
           )}
 
@@ -444,6 +649,8 @@ export default function App() {
               userXP={userXP}
               onAddXP={handleAddXP}
               onOpenAdRequestModal={handleOpenAdRequestModal}
+              onMistake={handleQuizMistake}
+              onQuizComplete={handleRecordQuizCompletion}
             />
           )}
         </div>
@@ -478,7 +685,7 @@ export default function App() {
               className="hover:text-indigo-600 font-semibold cursor-pointer transition-colors inline-flex items-center gap-1"
             >
               <Megaphone className="w-3.5 h-3.5 text-amber-500" />
-              <span>{appLang === 'hy' ? 'Գովազդ մեզ մոտ' : 'Advertise with us'}</span>
+              <span>{appLang === 'hy' ? 'Գովազդ մեր մոտ' : 'Advertise with us'}</span>
             </button>
             {isOwnerAdmin(currentUser) && (
               <>
@@ -519,6 +726,17 @@ export default function App() {
         onLogout={handleLogout}
         onOpenAdRequestModal={handleOpenAdRequestModal}
         onOpenAdminPortal={handleOpenAdminPortal}
+        onOpenMissions={() => setIsMissionsModalOpen(true)}
+        reviewPoolCount={reviewPool.length}
+      />
+
+      {/* Daily Missions Interactive Modal */}
+      <DailyMissionsModal
+        isOpen={isMissionsModalOpen}
+        onClose={() => setIsMissionsModalOpen(false)}
+        missions={dailyMissions}
+        onClaimReward={handleClaimMissionReward}
+        appLang={appLang}
       />
 
       {/* Professional "Advertise with us" Modal Form */}

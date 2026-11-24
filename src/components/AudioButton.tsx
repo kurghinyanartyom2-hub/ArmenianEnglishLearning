@@ -5,18 +5,23 @@ import { speakEnglish, stopSpeech } from '../utils/speech';
 interface AudioButtonProps {
   text: string;
   rate?: number;
+  speed?: number;
   size?: 'sm' | 'md' | 'lg';
   label?: string;
   showText?: boolean;
+  className?: string;
 }
 
 export const AudioButton: React.FC<AudioButtonProps> = ({
   text,
   rate = 0.9,
+  speed,
   size = 'md',
   label,
   showText = false,
+  className = '',
 }) => {
+  const effectiveRate = speed ?? rate;
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlay = (e: React.MouseEvent) => {
@@ -28,7 +33,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
     }
 
     setIsPlaying(true);
-    const success = speakEnglish(text, rate, () => {
+    const success = speakEnglish(text, effectiveRate, () => {
       setIsPlaying(false);
     });
 
@@ -51,7 +56,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
         isPlaying
           ? 'bg-purple-100 text-purple-900 ring-2 ring-purple-400/50 scale-105'
           : 'bg-blue-50/80 hover:bg-blue-100 text-blue-800 hover:text-indigo-900 border border-blue-200/80 shadow-xs'
-      } ${sizeClasses[size]}`}
+      } ${sizeClasses[size]} ${className}`}
       title={isPlaying ? 'Դադարեցնել / Stop' : 'Լսել արտասանությունը / Listen'}
       aria-label="Listen pronunciation"
     >

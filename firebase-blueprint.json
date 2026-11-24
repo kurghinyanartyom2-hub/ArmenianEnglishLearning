@@ -1,0 +1,183 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public and identity information of a registered user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the user (Firebase Auth UID)",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the learner",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 120
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar preset string or image URL",
+          "maxLength": 300
+        },
+        "englishLevel": {
+          "type": "string",
+          "description": "Current learning level",
+          "enum": ["beginner", "elementary", "intermediate"]
+        },
+        "dailyGoalMinutes": {
+          "type": "number",
+          "description": "Daily targeted learning goal in minutes"
+        },
+        "registeredAt": {
+          "type": "string",
+          "description": "ISO date string when user joined"
+        },
+        "role": {
+          "type": "string",
+          "description": "User permission role",
+          "enum": ["super_admin", "student"]
+        }
+      },
+      "required": ["id", "name", "email", "registeredAt"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Student gamification stats, streak, XP, and lesson progress",
+      "type": "object",
+      "properties": {
+        "streakCount": {
+          "type": "number",
+          "description": "Consecutive days streak"
+        },
+        "userXP": {
+          "type": "number",
+          "description": "Total accumulated experience points"
+        },
+        "completedLessonIds": {
+          "type": "array",
+          "description": "List of completed lesson IDs"
+        },
+        "masteredWordIds": {
+          "type": "array",
+          "description": "List of mastered vocabulary item IDs"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last progress update"
+        }
+      },
+      "required": ["streakCount", "userXP"]
+    },
+    "AdRequest": {
+      "title": "AdRequest",
+      "description": "Partner or sponsor advertising inquiry and review status",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ad inquiry ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessName": {
+          "type": "string",
+          "description": "Business or sponsor name",
+          "maxLength": 120
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "Contact email of sponsor",
+          "maxLength": 120
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "Optional phone number",
+          "maxLength": 40
+        },
+        "headline": {
+          "type": "string",
+          "description": "Ad title/headline",
+          "maxLength": 140
+        },
+        "adText": {
+          "type": "string",
+          "description": "Ad descriptive copy",
+          "maxLength": 500
+        },
+        "callToAction": {
+          "type": "string",
+          "description": "Button CTA text",
+          "maxLength": 50
+        },
+        "targetUrl": {
+          "type": "string",
+          "description": "Destination URL",
+          "maxLength": 500
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Image/logo URL",
+          "maxLength": 500
+        },
+        "placement": {
+          "type": "string",
+          "description": "Ad slot placement",
+          "enum": ["hero_top", "sidebar_dashboard", "lesson_footer", "quiz_finish"]
+        },
+        "duration": {
+          "type": "string",
+          "description": "Requested runtime duration",
+          "enum": ["7_days", "14_days", "30_days", "90_days"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Review and display status",
+          "enum": ["pending_review", "approved", "active", "rejected"]
+        },
+        "price": {
+          "type": "number",
+          "description": "Pricing in AMD or USD"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (AMD, USD)",
+          "maxLength": 10
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Notes from the administrator",
+          "maxLength": 500
+        },
+        "submittedAt": {
+          "type": "string",
+          "description": "ISO timestamp of submission"
+        },
+        "submitterUserId": {
+          "type": "string",
+          "description": "User ID of the submitter",
+          "maxLength": 128
+        }
+      },
+      "required": ["id", "businessName", "contactEmail", "headline", "adText", "placement", "duration", "status", "submittedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles stored per user UID"
+    },
+    "/users/{userId}/progress/data": {
+      "schema": "UserProgress",
+      "description": "Student gamification and lesson progress"
+    },
+    "/adRequests/{adId}": {
+      "schema": "AdRequest",
+      "description": "Sponsor ad submissions reviewed by super admin"
+    }
+  }
+}
